@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V-World 주소 지도</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0C1117;
+    --panel: #141B24;
+    --border: #1F2D3D;
+    --accent: #3B82F6;
+    --accent2: #10B981;
+    --danger: #EF4444;
+    --warn: #F59E0B;
+    --text: #E2E8F0;
+    --muted: #64748B;
+    --card: #1A2332;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 16px;
+  }
+  .topbar-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .topbar-logo span { color: var(--accent2); }
+  .api-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 480px;
+  }
+  .api-label {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .api-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-input:focus { border-color: var(--accent); }
+  .api-input::placeholder { color: var(--muted); }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563EB; }
+  .btn-success { background: var(--accent2); color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-blue { background: #1E3A5F; color: var(--accent); }
+  .badge-green { background: #0D3326; color: var(--accent2); }
+  .badge-red { background: #3A1A1A; color: var(--danger); }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .side {
+    width: 340px;
+    min-width: 340px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+  .tab-content { display: none; flex: 1; flex-direction: column; overflow: hidden; padding: 16px; gap: 10px; }
+  .tab-content.active { display: flex; }
+  .input-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  textarea, input[type=text] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 110px; }
+  textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+  textarea::placeholder, input::placeholder { color: var(--muted); }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg);
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: #1A2332; }
+  .drop-icon { font-size: 28px; margin-bottom: 8px; }
+  .drop-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .drop-text strong { color: var(--text); }
+  #file-input { display: none; }
+  .addr-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .addr-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .addr-list::-webkit-scrollbar { width: 4px; }
+  .addr-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .addr-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .addr-item:hover { border-color: var(--accent); }
+  .addr-item.success { border-left: 3px solid var(--accent2); }
+  .addr-item.fail    { border-left: 3px solid var(--danger); }
+  .addr-item.loading { border-left: 3px solid var(--warn); }
+  .addr-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .addr-dot.success { background: var(--accent2); }
+  .addr-dot.fail    { background: var(--danger); }
+  .addr-dot.loading { background: var(--warn); animation: pulse 1s infinite; }
+  .addr-dot.pending { background: var(--muted); }
+  .addr-text { flex: 1; color: var(--text); }
+  .addr-sub { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .addr-delete {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 14px; padding: 0 2px;
+    transition: color 0.15s; flex-shrink: 0;
+  }
+  .addr-delete:hover { color: var(--danger); }
+  #map { flex: 1; position: relative; }
+  .statusbar {
+    height: 28px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .status-item { display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  #toast {
+    position: fixed;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.toast-success { border-color: var(--accent2); color: var(--accent2); }
+  #toast.toast-error   { border-color: var(--danger);  color: var(--danger); }
+  #toast.toast-warn    { border-color: var(--warn);    color: var(--warn); }
+  .ol-popup {
+    position: absolute;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 180px;
+    font-size: 12px;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    z-index: 1000;
+  }
+  .ol-popup-title { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .ol-popup-coord { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+  .info-box {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #0D2137;
+    border: 1px solid #1E3A5F;
+    font-size: 11px;
+    color: #93C5FD;
+    line-height: 1.6;
+    flex-shrink: 0;
+  }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 8px; flex: 1;
+    color: var(--muted); font-size: 12px; text-align: center; padding: 20px;
+  }
+  .empty-icon { font-size: 32px; opacity: 0.4; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">GEO<span>MAP</span></div>
+  <div class="api-row">
+    <span class="api-label">V-WORLD KEY</span>
+    <input type="password" id="api-key" class="api-input" placeholder="V-World API 키 입력 후 Enter">
+    <button class="btn btn-primary" onclick="initMap()">지도 로드</button>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <span class="badge badge-blue"  id="total-badge">총 0개</span>
+    <span class="badge badge-green" id="success-badge">성공 0</span>
+    <span class="badge badge-red"   id="fail-badge" style="display:none">실패 0</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDE -->
+  <div class="side">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('text')">✏️ 직접 입력</div>
+      <div class="tab"        onclick="switchTab('file')">📁 파일 업로드</div>
+      <div class="tab"        onclick="switchTab('json')">🔗 JSON</div>
+    </div>
+
+    <!-- TEXT TAB -->
+    <div class="tab-content active" id="tab-text">
+      <div class="info-box">
+        🌐 Geocoding: <strong>Nominatim (OpenStreetMap)</strong><br>
+        완전 무료 · API 키 불필요 · CORS 허용<br>
+        <span style="color:var(--warn)">⚠ 한국 주소는 영문 또는 도로명 전체 입력 시 정확도 향상</span>
+      </div>
+      <div class="input-label">주소 입력 (한 줄에 하나씩)</div>
+      <textarea id="addr-textarea"
+        placeholder="서울특별시 중구 세종대로 110&#10;경기도 성남시 분당구 판교역로 235&#10;부산광역시 해운대구 해운대해변로 264"></textarea>
+      <button class="btn btn-success" onclick="addFromText()">📍 지도에 표시</button>
+      <div class="addr-list-header">
+        <span style="font-size:12px;color:var(--muted)">등록된 주소</span>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="clearAll()">전체 삭제</button>
+      </div>
+      <div class="addr-list" id="addr-list">
+        <div class="empty-state">
+          <div class="empty-icon">📍</div>
+          <div>주소를 입력하고<br>지도에 표시하세요</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE TAB -->
+    <div class="tab-content" id="tab-file">
+      <div class="drop-zone" id="drop-zone"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <div class="drop-icon">📂</div>
+        <div class="drop-text"><strong>CSV 또는 엑셀</strong>을 드래그하거나 클릭</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">.csv / .xlsx / .xls</div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFile(event)">
+      <div style="font-size:11px;color:var(--muted);line-height:1.7;flex-shrink:0;">
+        💡 컬럼명에 <code style="color:var(--accent)">"주소"</code> 또는 <code style="color:var(--accent)">"address"</code> 포함 시 자동 인식
+      </div>
+      <div id="file-preview" style="display:none;flex:1;flex-direction:column;gap:8px;overflow:hidden;">
+        <div class="addr-list-header">
+          <span style="font-size:12px;color:var(--muted)" id="file-preview-label">불러온 주소</span>
+          <button class="btn btn-success" style="padding:5px 12px;font-size:11px;" onclick="geocodeFileAll()">📍 전체 표시</button>
+        </div>
+        <div class="addr-list" id="file-addr-list"></div>
+      </div>
+    </div>
+
+    <!-- JSON TAB -->
+    <div class="tab-content" id="tab-json">
+      <div class="input-label">GitHub Raw URL</div>
+      <input type="text" id="json-url" placeholder="https://raw.githubusercontent.com/.../data.json">
+      <button class="btn btn-ghost" onclick="fetchFromUrl()">🔗 URL에서 가져오기</button>
+      <div style="text-align:center;font-size:11px;color:var(--muted);flex-shrink:0;">또는 직접 입력</div>
+      <textarea id="json-textarea"
+        placeholder='[{"address":"서울시 중구 세종대로 110","name":"서울시청"}]'></textarea>
+      <button class="btn btn-success" onclick="addFromJson()">📍 JSON 파싱 후 표시</button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<div class="statusbar">
+  <div class="status-item">
+    <div class="status-dot" id="map-status-dot" style="background:var(--muted)"></div>
+    <span id="map-status-text">지도 미로드</span>
+  </div>
+  <div class="status-item">📍 <span id="status-count">등록: 0개</span></div>
+  <div class="status-item">✅ <span id="status-success">성공: 0개</span></div>
+  <div class="status-item">❌ <span id="status-fail">실패: 0개</span></div>
+  <div style="margin-left:auto;font-size:10px;color:var(--border)">
+    지도: V-World · Geocoding: Nominatim OSM
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="popup" class="ol-popup" style="display:none;"></div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.6.5/ol.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.6.5/ol.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+let map = null, vectorSource = null;
+let addresses = [], mapLoaded = false;
+let fileAddresses = [];
+
+// ── 지도 초기화 ──
+function initMap() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  if (!apiKey) { showToast('V-World API 키를 입력해주세요', 'error'); return; }
+  if (map) { map.setTarget(null); map = null; }
+
+  vectorSource = new ol.source.Vector();
+
+  const vectorLayer = new ol.layer.Vector({
+    source: vectorSource,
+    style: (feature) => new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 8,
+        fill: new ol.style.Fill({ color: '#3B82F6' }),
+        stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 }),
+      }),
+      text: new ol.style.Text({
+        text: feature.get('label') || '',
+        offsetY: -18,
+        font: '11px Noto Sans KR, sans-serif',
+        fill: new ol.style.Fill({ color: '#E2E8F0' }),
+        stroke: new ol.style.Stroke({ color: '#0C1117', width: 3 }),
+      }),
+    }),
+  });
+
+  map = new ol.Map({
+    target: 'map',
+    layers: [
+      new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: `https://api.vworld.kr/req/wmts/1.0.0/${apiKey}/Base/{z}/{y}/{x}.png`,
+          attributions: '© V-World',
+        }),
+      }),
+      vectorLayer,
+    ],
+    view: new ol.View({
+      center: ol.proj.fromLonLat([127.5, 36.5]),
+      zoom: 7,
+    }),
+  });
+
+  // 팝업
+  const popup = document.getElementById('popup');
+  map.on('pointermove', (e) => {
+    const feature = map.forEachFeatureAtPixel(e.pixel, f => f);
+    if (feature) {
+      const ll = ol.proj.toLonLat(feature.getGeometry().getCoordinates());
+      popup.style.display = 'block';
+      popup.style.left = (e.pixel[0] + 14) + 'px';
+      popup.style.top  = (e.pixel[1] - 10) + 'px';
+      popup.innerHTML  = `<div class="ol-popup-title">${feature.get('name') || feature.get('address')}</div>
+                          <div class="ol-popup-coord">${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}</div>`;
+      map.getTargetElement().style.cursor = 'pointer';
+    } else {
+      popup.style.display = 'none';
+      map.getTargetElement().style.cursor = '';
+    }
+  });
+
+  mapLoaded = true;
+  document.getElementById('map-status-dot').style.background = '#10B981';
+  document.getElementById('map-status-text').textContent = '지도 로드 완료';
+  showToast('V-World 지도 로드 완료!', 'success');
+}
+
+// ── Nominatim Geocoding ──
+async function geocodeAddress(address) {
+  try {
+    // Nominatim: 한국 주소 정확도 향상을 위해 countrycodes=kr 고정
+    const url = `https://nominatim.openstreetmap.org/search?` +
+      `q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=kr`;
+    const resp = await fetch(url, {
+      headers: { 'Accept-Language': 'ko', 'User-Agent': 'VWorldMapApp/1.0' }
+    });
+    const data = await resp.json();
+    if (data.length > 0) {
+      return { lon: parseFloat(data[0].lon), lat: parseFloat(data[0].lat) };
+    }
+    // fallback: countrycodes 없이 재시도
+    const url2 = `https://nominatim.openstreetmap.org/search?` +
+      `q=${encodeURIComponent(address + ' 대한민국')}&format=json&limit=1`;
+    const resp2 = await fetch(url2, {
+      headers: { 'Accept-Language': 'ko', 'User-Agent': 'VWorldMapApp/1.0' }
+    });
+    const data2 = await resp2.json();
+    if (data2.length > 0) {
+      return { lon: parseFloat(data2[0].lon), lat: parseFloat(data2[0].lat) };
+    }
+    return null;
+  } catch { return null; }
+}
+
+function addMarker(address, coord, name) {
+  if (!map || !vectorSource) return;
+  const feature = new ol.Feature({
+    geometry: new ol.geom.Point(ol.proj.fromLonLat([coord.lon, coord.lat])),
+    address, name: name || address, label: name || '',
+  });
+  vectorSource.addFeature(feature);
+}
+
+function fitToMarkers() {
+  if (!map || !vectorSource || vectorSource.getFeatures().length === 0) return;
+  map.getView().fit(vectorSource.getExtent(), { padding: [60,60,60,60], duration: 600, maxZoom: 16 });
+}
+
+// ── 텍스트 입력 ──
+async function addFromText() {
+  if (!mapLoaded) { showToast('지도를 먼저 로드해주세요', 'error'); return; }
+  const raw = document.getElementById('addr-textarea').value.trim();
+  if (!raw) { showToast('주소를 입력해주세요', 'error'); return; }
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  document.getElementById('addr-textarea').value = '';
+  for (const addr of lines) {
+    if (!addresses.find(a => a.address === addr))
+      addresses.push({ id: Date.now() + Math.random(), address: addr, name: '', status: 'loading' });
+  }
+  renderAddrList();
+  await geocodePending();
+}
+
+async function geocodePending() {
+  const pending = addresses.filter(a => a.status === 'loading');
+  for (const item of pending) {
+    // Nominatim 사용제한: 초당 1건 권장
+    await sleep(1100);
+    const coord = await geocodeAddress(item.address);
+    if (coord) { item.status = 'success'; item.coord = coord; addMarker(item.address, coord, item.name); }
+    else        { item.status = 'fail'; }
+    renderAddrList();
+    updateStats();
+  }
+  if (pending.length > 0) {
+    fitToMarkers();
+    const ok = pending.filter(a => a.status === 'success').length;
+    showToast(`${ok}/${pending.length}개 주소 표시 완료`, ok === pending.length ? 'success' : 'warn');
+  }
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ── 파일 업로드 ──
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function onDragLeave()  { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDrop(e)      { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) processFile(f); }
+function handleFile(e)  { const f=e.target.files[0]; if(f) processFile(f); }
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const r = new FileReader();
+    r.onload = e => parseCSV(e.target.result);
+    r.readAsText(file, 'UTF-8');
+  } else if (['xlsx','xls'].includes(ext)) {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      parseCSV(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]));
+    };
+    r.readAsBinaryString(file);
+  } else showToast('지원하지 않는 파일 형식입니다', 'error');
+}
+
+function parseCSV(csvText) {
+  const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('파일이 비어있습니다', 'error'); return; }
+  const header  = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  const addrCol = header.findIndex(h => h.includes('주소') || h.toLowerCase().includes('address') || h.toLowerCase().includes('addr'));
+  const nameCol = header.findIndex(h => h.includes('이름') || h.includes('명')  || h.toLowerCase().includes('name'));
+  fileAddresses = [];
+  const dataLines = addrCol >= 0 ? lines.slice(1) : lines;
+  for (const line of dataLines) {
+    const cols = line.split(',').map(c => c.trim().replace(/"/g,''));
+    const addr = addrCol >= 0 ? cols[addrCol] : cols[0];
+    const name = nameCol >= 0 ? (cols[nameCol] || '') : '';
+    if (addr) fileAddresses.push({ id: Date.now()+Math.random(), address: addr, name, status: 'pending' });
+  }
+  document.getElementById('file-preview').style.display = 'flex';
+  document.getElementById('file-preview-label').textContent = `불러온 주소 (${fileAddresses.length}개)`;
+  renderFileAddrList();
+  showToast(`${fileAddresses.length}개 주소 불러오기 완료`, 'success');
+}
+
+function renderFileAddrList() {
+  const el = document.getElementById('file-addr-list');
+  el.innerHTML = fileAddresses.slice(0,30).map(a =>
+    `<div class="addr-item"><div class="addr-dot pending"></div>
+     <div class="addr-text">${a.address}${a.name?`<div class="addr-sub">${a.name}</div>`:''}</div></div>`
+  ).join('') + (fileAddresses.length > 30 ? `<div style="text-align:center;font-size:11px;color:var(--muted);padding:8px;">...외 ${fileAddresses.length-30}개</div>` : '');
+}
+
+async function geocodeFileAll() {
+  if (!mapLoaded) { showToast('지도를 먼저 로드해주세요', 'error'); return; }
+  for (const item of fileAddresses) { item.status = 'loading'; addresses.push(item); }
+  switchTab('text'); renderAddrList();
+  await geocodePending();
+}
+
+// ── JSON ──
+async function fetchFromUrl() {
+  const url = document.getElementById('json-url').value.trim();
+  if (!url) { showToast('URL을 입력해주세요', 'error'); return; }
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    document.getElementById('json-textarea').value = JSON.stringify(data, null, 2);
+    showToast('JSON 불러오기 성공', 'success');
+  } catch { showToast('URL에서 JSON 불러오기 실패', 'error'); }
+}
+
+async function addFromJson() {
+  if (!mapLoaded) { showToast('지도를 먼저 로드해주세요', 'error'); return; }
+  const raw = document.getElementById('json-textarea').value.trim();
+  if (!raw) { showToast('JSON을 입력해주세요', 'error'); return; }
+  try {
+    const data  = JSON.parse(raw);
+    const items = Array.isArray(data) ? data : [data];
+    for (const item of items) {
+      const addr = item.address || item.주소 || item.addr;
+      const name = item.name || item.이름 || item.label || '';
+      if (addr) addresses.push({ id: Date.now()+Math.random(), address: addr, name, status: 'loading' });
+    }
+    switchTab('text'); renderAddrList();
+    await geocodePending();
+  } catch(e) { showToast('JSON 파싱 오류: '+e.message, 'error'); }
+}
+
+// ── 렌더 ──
+function renderAddrList() {
+  const el = document.getElementById('addr-list');
+  if (!addresses.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📍</div><div>주소를 입력하고<br>지도에 표시하세요</div></div>`;
+    return;
+  }
+  el.innerHTML = addresses.map(a => `
+    <div class="addr-item ${a.status}" onclick="focusAddr('${a.id}')">
+      <div class="addr-dot ${a.status}"></div>
+      <div class="addr-text">
+        ${a.name ? `<strong>${a.name}</strong><br>` : ''}${a.address}
+        ${a.coord  ? `<div class="addr-sub">${a.coord.lat.toFixed(5)}, ${a.coord.lon.toFixed(5)}</div>` : ''}
+        ${a.status==='fail'    ? `<div class="addr-sub" style="color:var(--danger)">주소 변환 실패 — 더 자세한 주소로 입력해보세요</div>` : ''}
+        ${a.status==='loading' ? `<div class="addr-sub" style="color:var(--warn)">변환 중... (초당 1건 제한)</div>` : ''}
+      </div>
+      <button class="addr-delete" onclick="event.stopPropagation();deleteAddr('${a.id}')">✕</button>
+    </div>`).join('');
+  updateStats();
+}
+
+function focusAddr(id) {
+  const item = addresses.find(a => String(a.id) === String(id));
+  if (!item?.coord || !map) return;
+  map.getView().animate({ center: ol.proj.fromLonLat([item.coord.lon, item.coord.lat]), zoom: 16, duration: 500 });
+}
+
+function deleteAddr(id) {
+  addresses = addresses.filter(a => String(a.id) !== String(id));
+  if (vectorSource) { vectorSource.clear(); addresses.filter(a=>a.coord).forEach(a=>addMarker(a.address,a.coord,a.name)); }
+  renderAddrList(); updateStats();
+}
+
+function clearAll() {
+  addresses = [];
+  if (vectorSource) vectorSource.clear();
+  renderAddrList(); updateStats();
+}
+
+function updateStats() {
+  const total   = addresses.length;
+  const success = addresses.filter(a=>a.status==='success').length;
+  const fail    = addresses.filter(a=>a.status==='fail').length;
+  document.getElementById('total-badge').textContent   = `총 ${total}개`;
+  document.getElementById('success-badge').textContent = `성공 ${success}`;
+  const fb = document.getElementById('fail-badge');
+  fb.textContent   = `실패 ${fail}`;
+  fb.style.display = fail > 0 ? 'inline-flex' : 'none';
+  document.getElementById('status-count').textContent   = `등록: ${total}개`;
+  document.getElementById('status-success').textContent = `성공: ${success}개`;
+  document.getElementById('status-fail').textContent    = `실패: ${fail}개`;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['text','file','json'][i]===tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'show' + (type ? ' toast-'+type : '');
+  setTimeout(() => t.className = '', 2800);
+}
+
+document.getElementById('api-key').addEventListener('keydown', e => { if(e.key==='Enter') initMap(); });
+</script>
+</body>
+</html>
